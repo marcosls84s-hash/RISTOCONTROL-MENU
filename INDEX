@@ -3,74 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RistoControl - Menù Digitale</title>
+    <title>Menù Digitale - RistoControl</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
-        :root { --primary: #FF9800; --bg: #F0F2F5; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: var(--bg); margin: 0; padding: 0; }
-        .header { background: white; padding: 30px 20px; text-align: center; border-bottom: 5px solid var(--primary); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .header h1 { margin: 0; color: var(--primary); font-size: 28px; text-transform: uppercase; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .category-title { background: var(--primary); color: white; padding: 10px 20px; border-radius: 50px; display: inline-block; font-weight: bold; margin: 30px 0 15px; text-transform: uppercase; font-size: 14px; }
-        .dish-card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .dish-name { font-weight: bold; color: #333; font-size: 17px; }
-        .dish-price { font-weight: bold; color: var(--primary); font-size: 17px; }
-        #status-msg { text-align: center; padding: 50px; color: #888; font-style: italic; }
+        body { font-family: sans-serif; text-align: center; padding: 50px; background: #f4f4f4; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: inline-block; min-width: 300px; }
+        h1 { color: #FF9800; }
+        .item { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 10px 0; }
+        #debug { color: red; font-size: 12px; margin-top: 20px; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1 id="resName">RistoControl</h1>
-        <p>Menù Digitale Sempre Aggiornato</p>
+    <div class="card">
+        <h1 id="title">RISTOCONTROL</h1>
+        <div id="menu">Caricamento in corso...</div>
+        <div id="debug"></div>
     </div>
-    <div class="container">
-        <div id="status-msg">Inizializzazione menù...</div>
-        <div id="menuContent"></div>
-    </div>
+
     <script>
-        const firebaseConfig = { databaseURL: "https://comandaristorante-facile-default-rtdb.europe-west1.firebasedatabase.app" };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-        const resId = new URLSearchParams(window.location.search).get('res');
+        // Configurazione
+        const config = { databaseURL: "https://comandaristorante-facile-default-rtdb.europe-west1.firebasedatabase.app" };
+        firebase.initializeApp(config);
+        
+        const params = new URLSearchParams(window.location.search);
+        const resId = params.get('res');
+        const debug = document.getElementById('debug');
 
         if (!resId) {
-            document.getElementById('status-msg').innerHTML = "❌ Errore: QR Code non valido.";
+            document.getElementById('menu').innerHTML = "⚠️ Link non valido. Usa il QR del tavolo.";
         } else {
-            const resRef = db.ref("restaurants/" + resId);
-            
-            // Carica Nome
-            resRef.child("info/name").on("value", (s) => {
-                if (s.exists()) document.getElementById('resName').innerText = s.val().toUpperCase();
+            debug.innerText = "Connessione al database per: " + resId;
+            const ref = firebase.database().ref("restaurants/" + resId);
+
+            // Carica nome
+            ref.child("info/name").on("value", (s) => {
+                if(s.exists()) document.getElementById('title').innerText = s.val().toUpperCase();
             });
 
-            // Carica Menu
-            resRef.child("menu").on("value", (snapshot) => {
-                const msg = document.getElementById('status-msg');
-                const content = document.getElementById('menuContent');
-                content.innerHTML = "";
-                
-                if (snapshot.exists()) {
-                    msg.style.display = 'none';
-                    const dishes = [];
-                    snapshot.forEach(c => dishes.push(c.val()));
-                    const categories = [...new Set(dishes.map(d => d.category))];
-                    
-                    categories.forEach(cat => {
-                        const h = document.createElement('div');
-                        h.className = 'category-title';
-                        h.innerText = cat;
-                        content.appendChild(h);
-                        dishes.filter(d => d.category === cat).forEach(d => {
-                            const card = document.createElement('div');
-                            card.className = 'dish-card';
-                            card.innerHTML = `<div><div class="dish-name">${d.name}</div></div><div class="dish-price">€ ${d.price.toFixed(2)}</div>`;
-                            content.appendChild(card);
-                        });
+            // Carica menu
+            ref.child("menu").on("value", (snap) => {
+                const menuDiv = document.getElementById('menu');
+                if (snap.exists()) {
+                    menuDiv.innerHTML = "";
+                    snap.forEach((child) => {
+                        const p = child.val();
+                        menuDiv.innerHTML += `<div class="item"><span>${p.name}</span><b>€${p.price.toFixed(2)}</b></div>`;
                     });
+                    debug.innerText = "Menù caricato con successo!";
+                    debug.style.color = "green";
                 } else {
-                    msg.innerText = "Il menù è attualmente vuoto.";
+                    menuDiv.innerHTML = "Il menù di questo locale è vuoto.";
+                    debug.innerText = "Errore: Nessun dato trovato nel percorso specificato.";
                 }
+            }, (error) => {
+                debug.innerText = "Errore Firebase: " + error.message;
             });
         }
     </script>
