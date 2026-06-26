@@ -1,0 +1,32 @@
+<!-- Codice semplificato per il tuo Menu Digitale -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RistoControl - Menu Digitale</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Inseriremo qui i link a Firebase e il CSS per renderlo bellissimo -->
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .category { color: #FF9800; border-bottom: 2px solid #FF9800; margin-top: 20px; padding-bottom: 5px; }
+        .dish { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; display: flex; justify-content: space-between; }
+        .price { font-weight: bold; color: #333; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 id="resName">RISTOCONTROL</h1>
+        <p>Benvenuti a tavola</p>
+    </div>
+    <div id="menuContainer">
+        <!-- I piatti appariranno qui automaticamente -->
+    </div>
+
+    <!-- SCRIPT DI COLLEGAMENTO AL DB -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
+    <script>
+        // Qui metterò la configurazione del tuo database per farlo leggere alla pagina
+    </script>
+</body>
+</html>
