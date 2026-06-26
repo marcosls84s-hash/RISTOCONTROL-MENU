@@ -3,89 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DEBUG Menù - RistoControl</title>
-    <!-- Firebase SDK v8 (molto stabile per web statico) -->
+    <title>Menù Digitale - RistoControl</title>
+    <!-- Firebase SDK v8 -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; background: #222; color: #fff; padding: 20px; text-align: center; }
-        .log-box { background: #000; color: #0f0; padding: 15px; border-radius: 8px; text-align: left; font-family: monospace; font-size: 12px; margin-bottom: 20px; border: 1px solid #444; }
-        .menu-container { background: #fff; color: #333; border-radius: 15px; padding: 20px; display: none; }
-        .dish { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 10px 0; font-weight: bold; }
-        .category { background: #FF9800; color: #fff; padding: 5px; margin-top: 15px; border-radius: 5px; }
-        h1 { color: #FF9800; margin-bottom: 5px; }
+        :root { --primary: #FF9800; --bg: #ffffff; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; text-align: center; }
+        .header { background: #FF9800; color: white; padding: 40px 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .res-name { font-size: 32px; font-weight: 800; margin: 0; text-transform: uppercase; letter-spacing: 2px; }
+        .container { padding: 20px; max-width: 600px; margin: auto; }
+        .category { background: #333; color: white; padding: 10px; margin: 30px 0 15px; border-radius: 8px; font-weight: bold; text-transform: uppercase; font-size: 14px; }
+        .dish { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; background: #fff; margin-bottom: 5px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .dish-name { font-weight: 600; color: #333; font-size: 18px; text-align: left; }
+        .dish-price { font-weight: 800; color: var(--primary); font-size: 18px; }
+        #loader { padding: 80px 20px; color: #999; font-style: italic; }
+        .footer { margin-top: 50px; padding: 20px; font-size: 12px; color: #bbb; border-top: 1px solid #eee; }
     </style>
 </head>
 <body>
 
-    <h1>RISTOCONTROL</h1>
-    <p>Diagnostica Connessione Menù</p>
-
-    <!-- BOX DI LOG PER CAPIRE COSA SUCCEDE -->
-    <div id="log" class="log-box">Log: Inizializzazione...</div>
-
-    <!-- IL MENU VERO E PROPRIO -->
-    <div id="menuUI" class="menu-container">
-        <h2 id="resTitle">Nome Ristorante</h2>
-        <div id="itemsList"></div>
+    <div class="header">
+        <h1 id="resTitle" class="res-name">RISTOCONTROL</h1>
+        <p>Menù Digitale in tempo reale</p>
     </div>
 
+    <div class="container">
+        <div id="loader">Connessione al locale...</div>
+        <div id="menuUI"></div>
+    </div>
+
+    <div class="footer">Powered by RistoControl<br>Sviluppato da Gennaro Bevo</div>
+
     <script>
-        const log = document.getElementById('log');
-        function addLog(msg) { log.innerHTML += "<br>> " + msg; }
+        // 1. CONFIGURAZIONE DATABASE
+        const firebaseConfig = { 
+            databaseURL: "https://comandaristorante-facile-default-rtdb.europe-west1.firebasedatabase.app" 
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-        try {
-            // 1. Configurazione
-            const config = { databaseURL: "https://comandaristorante-facile-default-rtdb.europe-west1.firebasedatabase.app" };
-            firebase.initializeApp(config);
-            addLog("Firebase inizializzato.");
+        // 2. RECUPERO PARAMETRI URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const resId = urlParams.get('res');
+        const loader = document.getElementById('loader');
+        const menuUI = document.getElementById('menuUI');
 
-            // 2. Lettura ID
-            const urlParams = new URLSearchParams(window.location.search);
-            const resId = urlParams.get('res');
+        if (!resId) {
+            loader.innerHTML = "<h2 style='color:red'>⚠️ LINK NON VALIDO</h2><p>Questo link deve essere aperto tramite il QR Code generato dall'app RistoControl.</p>";
+        } else {
+            const resRef = db.ref("restaurants/" + resId);
 
-            if (!resId) {
-                addLog("ERRORE: Manca l'ID del ristorante nel link (?res=...)");
-            } else {
-                addLog("ID Ristorante rilevato: " + resId);
-                const db = firebase.database();
-                const ref = db.ref("restaurants/" + resId);
+            // 3. CARICAMENTO NOME
+            resRef.child("info/name").on("value", (snap) => {
+                if (snap.exists()) {
+                    document.getElementById('resTitle').innerText = snap.val().toUpperCase();
+                    document.title = snap.val() + " - Menù Digitale";
+                }
+            });
 
-                // 3. Test caricamento Nome
-                ref.child("info/name").on("value", (snap) => {
-                    if (snap.exists()) {
-                        addLog("Nome trovato: " + snap.val());
-                        document.getElementById('resTitle').innerText = snap.val().toUpperCase();
-                        document.getElementById('menuUI').style.display = 'block';
-                    } else {
-                        addLog("ATTENZIONE: Nessun nome trovato per questo ID.");
-                    }
-                });
-
-                // 4. Caricamento Piatti
-                ref.child("menu").on("value", (snap) => {
-                    const list = document.getElementById('itemsList');
-                    list.innerHTML = "";
-                    if (snap.exists()) {
-                        addLog("Piatti trovati nel database!");
-                        let currentCat = "";
-                        snap.forEach((child) => {
-                            const d = child.val();
-                            if (d.category !== currentCat) {
-                                currentCat = d.category;
-                                list.innerHTML += `<div class="category">${currentCat.toUpperCase()}</div>`;
-                            }
-                            list.innerHTML += `<div class="dish"><span>${d.name}</span><span>€${d.price.toFixed(2)}</span></div>`;
-                        });
-                    } else {
-                        addLog("ERRORE: La cartella 'menu' è vuota nel database.");
-                    }
-                }, (error) => {
-                    addLog("ERRORE DATABASE: " + error.message);
-                });
-            }
-        } catch (e) {
-            addLog("CRASH JAVASCRIPT: " + e.message);
+            // 4. CARICAMENTO PIATTI
+            resRef.child("menu").on("value", (snap) => {
+                if (snap.exists()) {
+                    loader.style.display = 'none';
+                    menuUI.innerHTML = "";
+                    let lastCat = "";
+                    
+                    snap.forEach((child) => {
+                        const dish = child.val();
+                        // Mostra categoria se cambia
+                        if (dish.category !== lastCat) {
+                            lastCat = dish.category;
+                            const catDiv = document.createElement('div');
+                            catDiv.className = 'category';
+                            catDiv.innerText = lastCat;
+                            menuUI.appendChild(catDiv);
+                        }
+                        // Crea card piatto
+                        const dishDiv = document.createElement('div');
+                        dishDiv.className = 'dish';
+                        dishDiv.innerHTML = `
+                            <div class="dish-name">${dish.name}</div>
+                            <div class="dish-price">€ ${dish.price.toFixed(2).replace('.',',')}</div>
+                        `;
+                        menuUI.appendChild(dishDiv);
+                    });
+                } else {
+                    loader.innerHTML = "📭 Il menù di questo locale è attualmente vuoto.";
+                }
+            }, (error) => {
+                loader.innerHTML = "🚫 Errore di connessione: " + error.message;
+            });
         }
     </script>
 </body>
