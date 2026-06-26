@@ -6,84 +6,120 @@
     <title>Menù Digitale - RistoControl</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --primary: #FF9800; --dark: #2D3436; --bg: #F9F9F9; }
-        body { font-family: 'Segoe UI', Roboto, sans-serif; background: var(--bg); margin: 0; padding: 0; color: var(--dark); }
-        .header { background: white; padding: 40px 20px; text-align: center; border-bottom: 6px solid var(--primary); box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
-        .header h1 { margin: 0; font-size: 30px; letter-spacing: 2px; color: var(--primary); text-transform: uppercase; font-weight: 900; }
-        .header p { margin: 10px 0 0; font-weight: 300; color: #636e72; font-style: italic; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px 15px 80px; }
-        .category-title { background: var(--dark); color: white; padding: 12px 20px; border-radius: 50px; display: inline-block; font-weight: bold; margin: 35px 0 15px; text-transform: uppercase; font-size: 13px; letter-spacing: 1px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .dish-card { background: white; padding: 20px; margin-bottom: 12px; border-radius: 18px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.02); }
-        .dish-name { font-weight: 700; font-size: 18px; color: #2d3436; }
-        .dish-price { font-weight: 900; color: var(--primary); font-size: 19px; }
-        #status-msg { text-align: center; padding: 100px 20px; color: #b2bec3; font-size: 18px; }
-        .footer { text-align: center; padding: 30px; font-size: 11px; color: #b2bec3; letter-spacing: 1px; text-transform: uppercase; }
+        :root { --primary: #FF9800; --dark: #1a1a1a; --light-bg: #fdfdfd; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background-color: var(--light-bg); margin: 0; padding: 0; color: var(--dark); }
+        
+        /* Header elegante */
+        .header { background: white; padding: 50px 20px; text-align: center; border-bottom: 6px solid var(--primary); box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        .header h1 { margin: 0; font-size: 34px; font-weight: 900; color: var(--primary); text-transform: uppercase; letter-spacing: -1px; }
+        .header p { margin: 10px 0 0; color: #888; font-size: 16px; letter-spacing: 1px; }
+
+        .container { max-width: 600px; margin: 0 auto; padding: 20px 15px 100px; }
+
+        /* Categorie */
+        .category-box { margin-top: 40px; }
+        .category-title { 
+            display: flex; align-items: center; gap: 10px;
+            font-size: 22px; font-weight: 800; color: var(--dark); 
+            margin-bottom: 20px; text-transform: uppercase;
+        }
+        .category-title i { color: var(--primary); font-size: 24px; }
+
+        /* Card Piatto */
+        .dish-card { 
+            background: white; padding: 18px; margin-bottom: 12px; border-radius: 20px; 
+            display: flex; justify-content: space-between; align-items: flex-start;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.03); border: 1px solid #f0f0f0;
+            transition: transform 0.2s;
+        }
+        .dish-info { flex: 1; padding-right: 15px; }
+        .dish-name { font-weight: 700; font-size: 18px; color: #333; margin-bottom: 4px; }
+        .dish-desc { font-size: 13px; color: #777; line-height: 1.4; }
+        .dish-price { font-weight: 900; color: var(--primary); font-size: 19px; white-space: nowrap; }
+
+        /* Stati */
+        #loader { text-align: center; padding: 100px 20px; font-size: 18px; color: #bbb; }
+        .footer { text-align: center; padding: 40px; font-size: 12px; color: #ccc; border-top: 1px solid #f0f0f0; }
+        
+        /* Floating Badge */
+        .badge { background: #E3F2FD; color: #1976D2; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: bold; margin-bottom: 5px; display: inline-block; }
     </style>
 </head>
 <body>
 
     <div class="header">
         <h1 id="resName">RISTOCONTROL</h1>
-        <p>Menù Digitale - Sempre Aggiornato</p>
+        <p><i class="fa-solid fa-utensils"></i> IL NOSTRO MENÙ</p>
     </div>
 
     <div class="container">
-        <div id="status-msg">🔌 Connessione al ristorante...</div>
+        <div id="loader"><i class="fas fa-circle-notch fa-spin"></i> Caricamento prelibatezze...</div>
         <div id="menuUI"></div>
     </div>
 
     <div class="footer">
-        Powered by RistoControl<br>
-        Sviluppato da Gennaro Bevo
+        © 2024 Tutti i diritti riservati<br>
+        <b>RISTOCONTROL</b> - Sviluppato da Gennaro Bevo
     </div>
 
     <script>
-        const firebaseConfig = { databaseURL: "https://comandaristorante-facile-default-rtdb.europe-west1.firebasedatabase.app" };
-        firebase.initializeApp(firebaseConfig);
+        const config = { databaseURL: "https://comandaristorante-facile-default-rtdb.europe-west1.firebasedatabase.app" };
+        firebase.initializeApp(config);
         const db = firebase.database();
         const resId = new URLSearchParams(window.location.search).get('res');
 
+        // Mappa icone per categoria
+        const icons = {
+            "ANTIPASTI": "fa-cheese", "PRIMI": "fa-bowl-rice", "SECONDI": "fa-drumstick-bite",
+            "CONTORNI": "fa-leaf", "PIZZE": "fa-pizza-slice", "BEVANDE": "fa-wine-glass",
+            "DOLCI": "fa-ice-cream"
+        };
+
         if (!resId) {
-            document.getElementById('status-msg').innerHTML = "⚠️ LINK NON VALIDO<br><small>Usa il QR Code presente sui tavoli</small>";
+            document.getElementById('loader').innerHTML = "⚠️ Scansiona il QR Code del tavolo";
         } else {
             const resRef = db.ref("restaurants/" + resId);
             
-            // Carica Nome Locale
             resRef.child("info/name").on("value", (s) => {
                 if (s.exists()) document.getElementById('resName').innerText = s.val().toUpperCase();
             });
 
-            // Carica Menù Real-Time
             resRef.child("menu").on("value", (snap) => {
-                const msg = document.getElementById('status-msg');
                 const ui = document.getElementById('menuUI');
                 ui.innerHTML = "";
                 
                 if (snap.exists()) {
-                    msg.style.display = 'none';
+                    document.getElementById('loader').style.display = 'none';
                     const dishes = [];
                     snap.forEach(c => dishes.push(c.val()));
                     
                     const categories = [...new Set(dishes.map(d => d.category))];
+                    
                     categories.forEach(cat => {
-                        const h = document.createElement('div');
-                        h.className = 'category-title';
-                        h.innerText = cat;
-                        ui.appendChild(h);
+                        const icon = icons[cat.toUpperCase()] || "fa-star";
+                        const section = document.createElement('div');
+                        section.className = 'category-box';
+                        section.innerHTML = `<div class="category-title"><i class="fas ${icon}"></i>${cat}</div>`;
                         
                         dishes.filter(d => d.category === cat).forEach(d => {
                             const card = document.createElement('div');
                             card.className = 'dish-card';
-                            card.innerHTML = `<div class="dish-name">${d.name}</div><div class="dish-price">€ ${d.price.toFixed(2).replace('.',',')}</div>`;
-                            ui.appendChild(card);
+                            card.innerHTML = `
+                                <div class="dish-info">
+                                    <div class="dish-name">${d.name}</div>
+                                    <div class="dish-desc">${d.note || 'Ingredienti di prima qualità'}</div>
+                                </div>
+                                <div class="dish-price">€ ${d.price.toFixed(2).replace('.',',')}</div>
+                            `;
+                            section.appendChild(card);
                         });
+                        ui.appendChild(section);
                     });
                 } else {
-                    msg.innerText = "📭 Il menù è in fase di allestimento.";
+                    document.getElementById('loader').innerText = "Menù in fase di aggiornamento...";
                 }
-            }, (err) => {
-                msg.innerHTML = "🚫 Accesso negato: " + err.message + "<br><small>Controlla le Firebase Rules</small>";
             });
         }
     </script>
