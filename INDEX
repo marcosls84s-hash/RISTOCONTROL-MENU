@@ -1,32 +1,101 @@
-<!-- Codice semplificato per il tuo Menu Digitale -->
 <!DOCTYPE html>
-<html>
+<html lang="it">
 <head>
-    <title>RistoControl - Menu Digitale</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- Inseriremo qui i link a Firebase e il CSS per renderlo bellissimo -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RistoControl - Menù Digitale</title>
+    <!-- Firebase Legacy SDK (più facile da configurare per GitHub Pages) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
-        .header { text-align: center; margin-bottom: 30px; }
-        .category { color: #FF9800; border-bottom: 2px solid #FF9800; margin-top: 20px; padding-bottom: 5px; }
-        .dish { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; display: flex; justify-content: space-between; }
-        .price { font-weight: bold; color: #333; }
+        :root { --primary: #FF9800; --bg: #F8F9FA; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); margin: 0; padding: 0; color: #333; }
+        .header { background: white; padding: 40px 20px; text-align: center; box-shadow: 0 2px 15px rgba(0,0,0,0.1); border-bottom: 4px solid var(--primary); }
+        .header h1 { margin: 0; color: var(--primary); font-size: 32px; text-transform: uppercase; letter-spacing: 2px; }
+        .header p { margin: 10px 0 0; color: #666; font-size: 16px; font-weight: 300; }
+        .container { max-width: 600px; margin: 20px auto; padding: 0 20px 50px; }
+        .category-title { color: #000; font-size: 22px; font-weight: 800; margin: 40px 0 15px; border-left: 5px solid var(--primary); padding-left: 15px; text-transform: uppercase; }
+        .dish-card { background: white; padding: 18px; margin-bottom: 15px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s; }
+        .dish-info { flex: 1; }
+        .dish-name { font-weight: 600; font-size: 18px; color: #222; }
+        .dish-price { font-weight: 800; color: var(--primary); font-size: 18px; margin-left: 20px; }
+        #loader { text-align: center; padding: 100px 20px; font-size: 18px; color: #999; }
+        .footer { text-align: center; padding: 20px; font-size: 12px; color: #aaa; }
     </style>
 </head>
 <body>
+
     <div class="header">
-        <h1 id="resName">RISTOCONTROL</h1>
-        <p>Benvenuti a tavola</p>
-    </div>
-    <div id="menuContainer">
-        <!-- I piatti appariranno qui automaticamente -->
+        <h1 id="resName">RistoControl</h1>
+        <p id="resSlogan">Il nostro menù sempre aggiornato</p>
     </div>
 
-    <!-- SCRIPT DI COLLEGAMENTO AL DB -->
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
+    <div class="container">
+        <div id="loader">Caricamento menù in corso...</div>
+        <div id="menuContent"></div>
+    </div>
+
+    <div class="footer">Powered by RistoControl - Sviluppato da Gennaro Bevo</div>
+
     <script>
-        // Qui metterò la configurazione del tuo database per farlo leggere alla pagina
+        // Configurazione del tuo Database
+        const firebaseConfig = {
+            databaseURL: "https://comandaristorante-facile-default-rtdb.europe-west1.firebasedatabase.app"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Legge l'ID dalla URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const resId = urlParams.get('res');
+
+        if (!resId) {
+            document.getElementById('loader').innerHTML = "⚠️ Attenzione: Nessun ristorante selezionato.<br>Usa il QR Code presente sui tavoli.";
+        } else {
+            const resRef = db.ref("restaurants/" + resId);
+
+            // 1. Carica Nome Ristorante
+            resRef.child("info/name").on("value", (snap) => {
+                if (snapshot.exists()) {
+                    document.getElementById('resName').innerText = snap.val().toUpperCase();
+                    document.title = snap.val() + " - Menù Digitale";
+                }
+            });
+
+            // 2. Carica Piatti
+            resRef.child("menu").on("value", (snapshot) => {
+                document.getElementById('loader').style.display = 'none';
+                const menuContent = document.getElementById('menuContent');
+                menuContent.innerHTML = "";
+
+                if (snapshot.exists()) {
+                    const dishes = [];
+                    snapshot.forEach((child) => { dishes.push(child.val()); });
+
+                    // Ordina e raggruppa
+                    const categories = [...new Set(dishes.map(d => d.category))];
+                    
+                    categories.forEach(cat => {
+                        const title = document.createElement('div');
+                        title.className = 'category-title';
+                        title.innerText = cat;
+                        menuContent.appendChild(title);
+
+                        dishes.filter(d => d.category === cat).forEach(dish => {
+                            const card = document.createElement('div');
+                            card.className = 'dish-card';
+                            card.innerHTML = `
+                                <div class="dish-info"><div class="dish-name">${dish.name}</div></div>
+                                <div class="dish-price">€ ${dish.price.toFixed(2).replace('.',',')}</div>
+                            `;
+                            menuContent.appendChild(card);
+                        });
+                    });
+                } else {
+                    menuContent.innerHTML = "<p style='text-align:center'>Menù non disponibile per questo locale.</p>";
+                }
+            });
+        }
     </script>
 </body>
 </html>
