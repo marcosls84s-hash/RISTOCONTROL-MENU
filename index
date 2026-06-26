@@ -1,71 +1,91 @@
 <!DOCTYPE html>
-<html>
+<html lang="it">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Menù Digitale - RistoControl</title>
+    <title>DEBUG Menù - RistoControl</title>
+    <!-- Firebase SDK v8 (molto stabile per web statico) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; margin: 0; padding: 0; background: #f0f0f0; text-align: center; }
-        .header { background: #FF9800; color: white; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
-        .container { padding: 20px; max-width: 500px; margin: auto; }
-        .dish { background: white; margin: 10px 0; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; font-weight: bold; }
-        .cat { background: #333; color: white; padding: 5px 10px; border-radius: 5px; margin-top: 20px; display: inline-block; }
-        #msg { padding: 50px; color: #666; }
+        body { font-family: sans-serif; background: #222; color: #fff; padding: 20px; text-align: center; }
+        .log-box { background: #000; color: #0f0; padding: 15px; border-radius: 8px; text-align: left; font-family: monospace; font-size: 12px; margin-bottom: 20px; border: 1px solid #444; }
+        .menu-container { background: #fff; color: #333; border-radius: 15px; padding: 20px; display: none; }
+        .dish { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 10px 0; font-weight: bold; }
+        .category { background: #FF9800; color: #fff; padding: 5px; margin-top: 15px; border-radius: 5px; }
+        h1 { color: #FF9800; margin-bottom: 5px; }
     </style>
 </head>
 <body>
-    <div class="header"><h1 id="n">RISTOCONTROL</h1><p>Menù Digitale</p></div>
-    <div class="container">
-        <div id="msg">In attesa del database...</div>
-        <div id="m"></div>
+
+    <h1>RISTOCONTROL</h1>
+    <p>Diagnostica Connessione Menù</p>
+
+    <!-- BOX DI LOG PER CAPIRE COSA SUCCEDE -->
+    <div id="log" class="log-box">Log: Inizializzazione...</div>
+
+    <!-- IL MENU VERO E PROPRIO -->
+    <div id="menuUI" class="menu-container">
+        <h2 id="resTitle">Nome Ristorante</h2>
+        <div id="itemsList"></div>
     </div>
 
     <script>
-        // Configurazione Database
-        const conf = { databaseURL: "https://comandaristorante-facile-default-rtdb.europe-west1.firebasedatabase.app" };
-        firebase.initializeApp(conf);
-        const db = firebase.database();
+        const log = document.getElementById('log');
+        function addLog(msg) { log.innerHTML += "<br>> " + msg; }
 
-        // Recupero ID Ristorante
-        const urlParams = new URLSearchParams(window.location.search);
-        const resId = urlParams.get('res');
+        try {
+            // 1. Configurazione
+            const config = { databaseURL: "https://comandaristorante-facile-default-rtdb.europe-west1.firebasedatabase.app" };
+            firebase.initializeApp(config);
+            addLog("Firebase inizializzato.");
 
-        if (!resId) {
-            document.getElementById('msg').innerHTML = "❌ ERRORE: Nessun ID trovato.<br>Scansiona il QR Code nel ristorante.";
-        } else {
-            console.log("Connessione per: " + resId);
-            const ref = db.ref("restaurants/" + resId);
+            // 2. Lettura ID
+            const urlParams = new URLSearchParams(window.location.search);
+            const resId = urlParams.get('res');
 
-            // Carica Nome
-            ref.child("info/name").on("value", (s) => {
-                if (s.exists()) document.getElementById('n').innerText = s.val().toUpperCase();
-            });
+            if (!resId) {
+                addLog("ERRORE: Manca l'ID del ristorante nel link (?res=...)");
+            } else {
+                addLog("ID Ristorante rilevato: " + resId);
+                const db = firebase.database();
+                const ref = db.ref("restaurants/" + resId);
 
-            // Carica Piatti
-            ref.child("menu").on("value", (snap) => {
-                const mDiv = document.getElementById('m');
-                const msg = document.getElementById('msg');
-                
-                if (snap.exists()) {
-                    msg.style.display = 'none';
-                    mDiv.innerHTML = "";
-                    let lastCat = "";
-                    snap.forEach((child) => {
-                        const d = child.val();
-                        if (d.category !== lastCat) {
-                            lastCat = d.category;
-                            mDiv.innerHTML += `<div class="cat">${lastCat.toUpperCase()}</div>`;
-                        }
-                        mDiv.innerHTML += `<div class="dish"><span>${d.name}</span><span>€${d.price.toFixed(2)}</span></div>`;
-                    });
-                } else {
-                    msg.innerHTML = "📭 Menù non ancora caricato per questo ID: <br><b>" + resId + "</b>";
-                }
-            }, (err) => {
-                msg.innerHTML = "🚫 Errore Firebase: " + err.message + "<br>Controlla le Rules nel database.";
-            });
+                // 3. Test caricamento Nome
+                ref.child("info/name").on("value", (snap) => {
+                    if (snap.exists()) {
+                        addLog("Nome trovato: " + snap.val());
+                        document.getElementById('resTitle').innerText = snap.val().toUpperCase();
+                        document.getElementById('menuUI').style.display = 'block';
+                    } else {
+                        addLog("ATTENZIONE: Nessun nome trovato per questo ID.");
+                    }
+                });
+
+                // 4. Caricamento Piatti
+                ref.child("menu").on("value", (snap) => {
+                    const list = document.getElementById('itemsList');
+                    list.innerHTML = "";
+                    if (snap.exists()) {
+                        addLog("Piatti trovati nel database!");
+                        let currentCat = "";
+                        snap.forEach((child) => {
+                            const d = child.val();
+                            if (d.category !== currentCat) {
+                                currentCat = d.category;
+                                list.innerHTML += `<div class="category">${currentCat.toUpperCase()}</div>`;
+                            }
+                            list.innerHTML += `<div class="dish"><span>${d.name}</span><span>€${d.price.toFixed(2)}</span></div>`;
+                        });
+                    } else {
+                        addLog("ERRORE: La cartella 'menu' è vuota nel database.");
+                    }
+                }, (error) => {
+                    addLog("ERRORE DATABASE: " + error.message);
+                });
+            }
+        } catch (e) {
+            addLog("CRASH JAVASCRIPT: " + e.message);
         }
     </script>
 </body>
