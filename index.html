@@ -1,0 +1,50 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2685.4">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+  </style>
+</head>
+<body>
+<p class="p1">&lt;!DOCTYPE html&gt;</p>
+<p class="p1">&lt;html&gt;</p>
+<p class="p1">&lt;body style="text-align:center; padding:50px; font-family:sans-serif;"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;h1 style="color:#FF9800;"&gt;RISTOCONTROL MENU&lt;/h1&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;p id="stato"&gt;Connessione al database...&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="lista" style="text-align:left; max-width:400px; margin:auto;"&gt;&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"&gt;&lt;/script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"&gt;&lt;/script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const config = { databaseURL: "https://comandaristorante-facile-default-rtdb.europe-west1.firebasedatabase.app" };</p>
+<p class="p1"><span class="Apple-converted-space">        </span>firebase.initializeApp(config);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const resId = new URLSearchParams(window.location.search).get('res');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (!resId) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>document.getElementById('stato').innerText = "ERRORE: ID MANCANTE";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>firebase.database().ref("restaurants/" + resId).on("value", (snap) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const data = snap.val();</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (data &amp;&amp; data.menu) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>document.getElementById('stato').style.display = "none";</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>let html = "";</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>Object.values(data.menu).forEach(p =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>html += `&lt;p&gt;&lt;b&gt;${p.name}&lt;/b&gt;: €${p.price.toFixed(2)}&lt;/p&gt;`;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>});</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>document.getElementById('lista').innerHTML = html;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>document.getElementById('stato').innerText = "MENU NON TROVATO PER ID: " + resId;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>});</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/script&gt;</p>
+<p class="p1">&lt;/body&gt;</p>
+<p class="p1">&lt;/html&gt;</p>
+</body>
+</html>
